@@ -133,6 +133,8 @@ void createWaylandWindowSurface(VulkanHelloAPI& vulkanExample)
 
 	wl_registry_add_listener(vulkanExample.surfaceData.wlRegistry, &registryListener, &vulkanExample.surfaceData);
 	wl_display_dispatch(vulkanExample.surfaceData.display);
+	wl_display_roundtrip(vulkanExample.surfaceData.display);
+
 	vulkanExample.surfaceData.surface = wl_compositor_create_surface(vulkanExample.surfaceData.wlCompositor);
 
 	if (!vulkanExample.surfaceData.surface)

@@ -371,9 +371,10 @@ bool isSupportedFormat(const pvrvk::PhysicalDevice& pdev, pvrvk::Format fmt);
 /// <param name="baseArrayLayer">The base array layer level of the image to transition</param>
 /// <param name="numArrayLayers">The number of array layers of the image to transition</param>
 /// <param name="aspect">The pvrvk::ImageAspectFlags of the image to transition</param>
+/// <param name="isSafetyCritical">Whether this method is being called from an application running as standard Vulkan or as Vulkan Safety Critical.</param>
 void setImageLayoutAndQueueFamilyOwnership(pvrvk::CommandBufferBase srccmd, pvrvk::CommandBufferBase dstcmd, uint32_t srcQueueFamily, uint32_t dstQueueFamily,
 	pvrvk::ImageLayout oldLayout, pvrvk::ImageLayout newLayout, pvrvk::Image& image, uint32_t baseMipLevel, uint32_t numMipLevels, uint32_t baseArrayLayer, uint32_t numArrayLayers,
-	pvrvk::ImageAspectFlags aspect);
+	pvrvk::ImageAspectFlags aspect, bool isSafetyCritical = false);
 
 /// <summary>Set image layout</summary>
 /// <param name="image">The image to transition</param>
@@ -477,11 +478,12 @@ pvrvk::Image uploadImage(pvrvk::Device& device, const Texture& texture, bool all
 /// <param name="imageAllocationCreateFlags">VMA Allocation creation flags. These flags can be used to control how and where the memory is allocated from.
 /// Valid flags include e_DEDICATED_MEMORY_BIT and e_MAPPED_BIT. e_DEDICATED_MEMORY_BIT indicates that the allocation should have its own memory block.
 /// e_MAPPED_BIT indicates memory will be persistently mapped respectively.</param>
+/// <param name="isSafetyCritical">Whether this method is being called from an application running as standard Vulkan or as Vulkan Safety Critical.</param>
 /// <returns>The Image Object uploaded.</returns>
 pvrvk::ImageView loadAndUploadImageAndView(pvrvk::Device& device, const char* fileName, bool allowDecompress, pvrvk::CommandBuffer& commandBuffer, IAssetProvider& assetProvider,
 	pvrvk::ImageUsageFlags usageFlags = pvrvk::ImageUsageFlags::e_SAMPLED_BIT, pvrvk::ImageLayout finalLayout = pvrvk::ImageLayout::e_SHADER_READ_ONLY_OPTIMAL,
 	Texture* outAssetTexture = nullptr, vma::Allocator stagingBufferAllocator = nullptr, vma::Allocator imageAllocator = nullptr,
-	vma::AllocationCreateFlags imageAllocationCreateFlags = vma::AllocationCreateFlags::e_NONE, const void* pNext = nullptr);
+	vma::AllocationCreateFlags imageAllocationCreateFlags = vma::AllocationCreateFlags::e_NONE, const void* pNext = nullptr, bool isSafetyCritical = false);
 
 /// <summary>Load and upload image to gpu. The upload command and staging buffers are recorded in the commandbuffer.</summary>
 /// <param name="device">The device to use to create the image and image view.</param>
@@ -616,9 +618,10 @@ struct ImageUpdateInfo
 /// <param name="isCubeMap">Is the image a cubemap</param>
 /// <param name="image">The image to update</param>
 /// <param name="bufferAllocator">A VMA allocator used to allocate memory for the created buffer.</param>
+/// <param name="isSafetyCritical">Whether this method is being called from an application running as standard Vulkan or as Vulkan Safety Critical.</param>
 /// <returns>Returns a pvrvk::Image update results structure - ImageUpdateResults</returns>
 void updateImage(pvrvk::Device& device, pvrvk::CommandBufferBase transferCommandBuffer, ImageUpdateInfo* updateInfos, uint32_t numUpdateInfos, pvrvk::Format format,
-	pvrvk::ImageLayout layout, bool isCubeMap, pvrvk::Image& image, vma::Allocator bufferAllocator = nullptr);
+	pvrvk::ImageLayout layout, bool isCubeMap, pvrvk::Image& image, vma::Allocator bufferAllocator = nullptr, bool isSafetyCritical = false);
 
 /// <summary>Utility function to update a buffer's data. This function maps and unmap the buffer only if the buffer is not already mapped.</summary>
 /// <param name="buffer">The buffer to map -> update -> unmap.</param>
@@ -709,21 +712,34 @@ void generateTextureAtlas(pvrvk::Device& device, const pvrvk::Image* inputImages
 struct VulkanVersion
 {
 	/// <summary>The major version number.</summary>
-	uint32_t majorV;
+	uint32_t majorVersion;
 	/// <summary>The minor version number.</summary>
-	uint32_t minorV;
+	uint32_t minorVersion;
 	/// <summary>The patch version number.</summary>
-	uint32_t patchV;
+	uint32_t patchVersion;
+	/// <summary>Whether the Vulkan API version used is standard Vulkan or Vulkan Safety Critical.</summary>
+	bool isSafetyCritical;
 
-	/// <summary>Default constructor for the VulkanVersion structure initiailising the version to the first Vulkan release 1.0.0.</summary>
-	/// <param name="majorV">The major Vulkan version.</param>
-	/// <param name="minorV">The minor Vulkan version.</param>
-	/// <param name="patchV">The Vulkan patch version.</param>
-	VulkanVersion(uint32_t majorV = 1, uint32_t minorV = 0, uint32_t patchV = 0) : majorV(majorV), minorV(minorV), patchV(patchV) {}
+	/// <summary>Default constructor for the VulkanVersion structure initialising the version to the first Vulkan release 1.0.0.</summary>
+	/// <param name="inMajorVersion">The major Vulkan version.</param>
+	/// <param name="inMinorVersion">The minor Vulkan version.</param>
+	/// <param name="inPatchVersion">The Vulkan patch version.</param>
+	VulkanVersion(uint32_t inMajorVersion = 1, uint32_t inMinorVersion = 0, uint32_t inPatchVersion = 0)
+		: majorVersion(inMajorVersion), minorVersion(inMinorVersion), patchVersion(inPatchVersion), isSafetyCritical(false)
+	{}
+
+	/// <summary>Default constructor for the VulkanVersion structure initialising the version to the first Vulkan release 1.0.0.</summary>
+	/// <param name="inMajorVersion">The major Vulkan version.</param>
+	/// <param name="inMinorVersion">The minor Vulkan version.</param>
+	/// <param name="inPatchVersion">The Vulkan patch version.</param>
+	/// <param name="inIsSafetyCritical">Whether the API used is standard Vulkan or Vulkan Safety Critical.</param>
+	VulkanVersion(uint32_t inMajorVersion, uint32_t inMinorVersion, uint32_t inPatchVersion, bool inIsSafetyCritical)
+		: majorVersion(inMajorVersion), minorVersion(inMinorVersion), patchVersion(inPatchVersion), isSafetyCritical(inIsSafetyCritical)
+	{}
 
 	/// <summary>Converts the major, minor and patch versions to a uint32_t which can be directly used when creating a Vulkan instance.</summary>
 	/// <returns>A uint32_t value which can be directly as the vulkan api version when creating a Vulkan instance set as pvrvk::ApplicationInfo.apiVersion</returns>
-	uint32_t toVulkanVersion() { return VK_MAKE_VERSION(majorV, minorV, patchV); }
+	uint32_t toVulkanVersion() { return VK_MAKE_VERSION(majorVersion, minorVersion, patchVersion); }
 };
 
 /// <summary>Container for a list of instance layers to be used for initiailising an instance using the helper function 'createInstanceAndSurface'.</summary>
@@ -782,7 +798,8 @@ private:
 /// <param name="applicationName">Used for setting the pApplicationName of the pvrvk::ApplicationInfo structure used when calling vkCreateInstance.</param>
 /// <param name="apiVersion">A VulkanVersion structure used for setting the apiVersion of the pvrvk::ApplicationInfo structure used when creating the Vulkan instance.</param>
 /// <param name="instanceExtensions">An InstanceExtensions structure which holds a list of instance extensions which will be checked for compatibility with the
-/// current Vulkan implementation before setting as the ppEnabledExtensionNames member of the pvrvk::InstanceCreateInfo used when creating the Vulkan instance.</param>
+/// current Vulkan implementation before setting as the ppEnabledExtensionNames member of the pvrvk::InstanceCreateInfo used when creating the Vulkan instance.
+/// It will contain the final list of instance extensions used for the Vulkan instance.</param>
 /// <param name="instanceLayers">An InstanceLayers structure which holds a list of instance layers which will be checked for compatibility with the current Vulkan
 /// implementation before setting as the ppEnabledLayerNames member of the pvrvk::InstanceCreateInfo used when creating the Vulkan instance.</param>
 /// <param name="InstanceValidationFlags">The flags required for the debug callback to log a message during instance creation and destruction</param>
@@ -837,9 +854,10 @@ struct QueueAccessInfo
 /// <param name="numQueueCreateInfos">The number of QueuePopulateInfo structures provided.</param>
 /// <param name="outAccessInfo">A pointer to a list of QueueAccessInfo structures specifying the properties for each of the queues retrieved.</param>
 /// <param name="deviceExtensions">A DeviceExtensions structure which specifyies a list device extensions to try to enable.</param>
+/// <param name="reservationCreateInfo">Pointer to a struct with information in case the device is done with the application runnin in Vulkan Safety Critical mode.</param>
 /// <returns>Returns the created device</returns>
 pvrvk::Device createDeviceAndQueues(pvrvk::PhysicalDevice physicalDevice, const QueuePopulateInfo* queueCreateInfos, uint32_t numQueueCreateInfos, QueueAccessInfo* outAccessInfo,
-	const DeviceExtensions& deviceExtensions = DeviceExtensions());
+	const DeviceExtensions& deviceExtensions = DeviceExtensions(), const VkDeviceObjectReservationCreateInfo* reservationCreateInfo = nullptr);
 
 #pragma endregion
 
@@ -1745,7 +1763,13 @@ std::vector<int> validatePhysicalDeviceExtensions(const pvrvk::Instance instance
 /// <param name="instance">Vulkan instance.</param>
 /// <param name="physicalDevice">Physical device used for the test.</param>
 /// <returns>True if the image format given covers the requirements, false otherwise.</returns>
-bool formatWithTilingSupportsFeatureFlags(pvrvk::Format imageFormat, pvrvk::ImageTiling imageTiling, pvrvk::FormatFeatureFlags formatFeatureFlags, const pvrvk::Instance instance, pvrvk::PhysicalDevice physicalDevice);
+bool formatWithTilingSupportsFeatureFlags(
+	pvrvk::Format imageFormat, pvrvk::ImageTiling imageTiling, pvrvk::FormatFeatureFlags formatFeatureFlags, const pvrvk::Instance instance, pvrvk::PhysicalDevice physicalDevice);
+
+/// <summary>Callback function used when the instance extension VK_EXT_debug_utils is supported (in debug builds only).</summary>
+/// <param name="fileName">.json file name to read the UUID data from.</param>
+/// <param name="UUID">UUID data read from file.</param>
+void readJsonUUID(std::string fileName, uint8_t* UUID);
 
 #pragma endregion
 } // namespace utils

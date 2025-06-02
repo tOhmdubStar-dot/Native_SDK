@@ -10,6 +10,7 @@ enumerating, enabling/disabling
 
 #include "PVRVk/TypesVk.h"
 #include "PVRVk/pvrvk_vulkan_wrapper.h"
+#include "PVRVk/pvrvk_vulkan_sc_minimal_wrapper.h"
 
 namespace pvrvk {
 namespace Extensions {

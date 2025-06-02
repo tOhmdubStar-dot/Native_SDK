@@ -355,6 +355,11 @@ private:
 	};
 
 protected:
+	/// <summary>IMPLEMENT THIS FUNCTION IN YOUR APPLICATION CLASS. This event is called before application start.</summary>
+	/// <returns>When implementing, return a suitable error code to signify failure. If pvr::Result::Success is not
+	/// returned , the Shell will detect that, clean up, and exit.</returns>
+	virtual Result preInitApplication() { return Result::Success; }
+
 	/// <summary>IMPLEMENT THIS FUNCTION IN YOUR APPLICATION CLASS. This event represents application start.</summary>
 	/// <returns>When implementing, return a suitable error code to signify failure. If pvr::Result::Success is not
 	/// returned , the Shell will detect that, clean up, and exit.</returns>
@@ -587,6 +592,7 @@ private:
 	// called by the State Machine
 
 	bool init(ShellData* data);
+	Result shellPreInitApplication();
 	Result shellInitApplication();
 	Result shellQuitApplication();
 	Result shellInitView();
@@ -707,9 +713,25 @@ public:
 	/// <returns>The frame after which the application is set to quit. If not set, returns -1</returns>
 	int32_t getQuitAfterFrame() const;
 
+	/// <summary>Get whether the application should be ran as Safety Critical (only Vulkan API currently).</summary>
+	/// <returns>True if the application should be ran as Safety Critical.</returns>
+	bool getSafetyCritical() const;
+
+	/// <summary>Get whether the application should be ran in .json pipeline file generation mode (only Vulkan API currently).</summary>
+	/// <returns>True if the application should be ran in .json pipeline file generation mode.</returns>
+	bool getJsonGeneration() const;
+
 	/// <summary>ONLY EFFECTIVE IF CALLED AT INIT APPLICATION. Set a frame after which the application will quit.</summary>
 	/// <param name="value">The frame after which the application is set to quit. Set to -1 to disable.</param>
 	void setQuitAfterFrame(uint32_t value);
+
+	/// <summary>Setter of ShellData::safetyCritical.</summary>
+	/// <param name="value">Value to set.</param>
+	void setSafetyCritical(bool value) const;
+
+	/// <summary>Setter of ShellData::jsonGeneration.</summary>
+	/// <param name="value">Value to set.</param>
+	void setJsonGeneration(bool value) const;
 
 	/// <summary>Get the time after which the application is set to automatically quit.If QuitAfterTime was not set,
 	/// returns -1</summary>

@@ -42,19 +42,22 @@ pvrvk::impl::Instance_::Instance_(make_shared_enabler, const InstanceCreateInfo&
 	_createInfo = instanceCreateInfo;
 
 	VkApplicationInfo appInfo = {};
-	appInfo.sType = static_cast<VkStructureType>(StructureType::e_APPLICATION_INFO);
-	appInfo.apiVersion = _createInfo.getApplicationInfo().getApiVersion();
-	appInfo.pApplicationName = _createInfo.getApplicationInfo().getApplicationName().c_str();
-	appInfo.applicationVersion = _createInfo.getApplicationInfo().getApplicationVersion();
-	appInfo.pEngineName = _createInfo.getApplicationInfo().getEngineName().c_str();
-	appInfo.engineVersion = _createInfo.getApplicationInfo().getEngineVersion();
+	if (!instanceCreateInfo.getIsSafetyCritical())
+	{
+		appInfo.sType = static_cast<VkStructureType>(StructureType::e_APPLICATION_INFO);
+		appInfo.apiVersion = _createInfo.getApplicationInfo().getApiVersion();
+		appInfo.pApplicationName = _createInfo.getApplicationInfo().getApplicationName().c_str();
+		appInfo.applicationVersion = _createInfo.getApplicationInfo().getApplicationVersion();
+		appInfo.pEngineName = _createInfo.getApplicationInfo().getEngineName().c_str();
+		appInfo.engineVersion = _createInfo.getApplicationInfo().getEngineVersion();
+	}
 
 	std::vector<const char*> enabledExtensions;
 	std::vector<const char*> enableLayers;
 
 	VkInstanceCreateInfo instanceCreateInfoVk = {};
 	instanceCreateInfoVk.sType = static_cast<VkStructureType>(StructureType::e_INSTANCE_CREATE_INFO);
-	instanceCreateInfoVk.pApplicationInfo = &appInfo;
+	instanceCreateInfoVk.pApplicationInfo = instanceCreateInfo.getIsSafetyCritical() ? nullptr : &appInfo;
 
 	if (instanceCreateInfo.getExtensionList().getNumExtensions())
 	{
@@ -115,6 +118,18 @@ pvrvk::impl::Instance_::Instance_(make_shared_enabler, const InstanceCreateInfo&
 		validationFeatures.pDisabledValidationFeatures = vkDisabledValidationFeatures.get();
 
 		appendPNext((VkBaseInStructure*)&instanceCreateInfoVk, &validationFeatures);
+	}
+
+	// Setup VK_LAYER_KHRONOS_json_gen
+	VkLayerInstanceLink layerInstanceLink = {};
+	VkLayerInstanceCreateInfo layerInstanceCreateInfo = {};
+	const char* instanceLayer = "VK_LAYER_KHRONOS_json_gen";
+	if (instanceCreateInfo.getLayerList().containsLayerByName("VK_LAYER_KHRONOS_json_gen"))
+	{
+		layerInstanceCreateInfo.sType = VK_STRUCTURE_TYPE_LOADER_INSTANCE_CREATE_INFO;
+		layerInstanceCreateInfo.function = VK_LAYER_LINK_INFO;
+		layerInstanceCreateInfo.u.pLayerInfo = &layerInstanceLink;
+		appendPNext((VkBaseInStructure*)&instanceCreateInfoVk, &layerInstanceCreateInfo);
 	}
 
 	vkThrowIfFailed(pvrvk::getVkBindings().vkCreateInstance(&instanceCreateInfoVk, nullptr, &_vkHandle), "Instance Constructor");

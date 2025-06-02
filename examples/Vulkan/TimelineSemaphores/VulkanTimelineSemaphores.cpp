@@ -410,8 +410,7 @@ void VulkanTimelineSemaphores::createDevicesAndQueues(pvrvk::Surface& surface)
 
 	_deviceResources->graphicsQueue = _deviceResources->device->getQueue(queueAccessInfos[0].familyId, queueAccessInfos[0].queueId);
 
-	if (!(queueAccessInfos[1].familyId != static_cast<uint32_t>(-1) &&
-		    queueAccessInfos[1].queueId != static_cast<uint32_t>(-1)))
+	if (!(queueAccessInfos[1].familyId != static_cast<uint32_t>(-1) && queueAccessInfos[1].queueId != static_cast<uint32_t>(-1)))
 	{
 		Log(LogLevel::Error, "Multiple queues are not supported (e_GRAPHICS_BIT + e_COMPUTE_BIT + WSI)");
 	}
@@ -676,17 +675,15 @@ pvr::Result VulkanTimelineSemaphores::renderFrame()
 	pvr::utils::beginQueueDebugLabel(_deviceResources->graphicsQueue, pvrvk::DebugUtilsLabel("renderFrame"));
 	_deviceResources->swapchain->acquireNextImage(uint64_t(-1), _deviceResources->imageAcquiredSemaphores[_frameId]);
 
-	const uint32_t swapchainIndex = _deviceResources->swapchain->getSwapchainIndex();
-
-	_deviceResources->perFrameResourcesFences[swapchainIndex]->wait();
-	_deviceResources->perFrameResourcesFences[swapchainIndex]->reset();
+	_deviceResources->perFrameResourcesFences[_frameId]->wait();
+	_deviceResources->perFrameResourcesFences[_frameId]->reset();
 
 	_deviceResources->uiDescription = "Noise texture nr | Required semaphore value\n";
 
-	renderComputeNoiseLayers(swapchainIndex);
+	renderComputeNoiseLayers(_frameId);
 
-	_deviceResources->endOfComputeFences[swapchainIndex]->wait();
-	_deviceResources->endOfComputeFences[swapchainIndex]->reset();
+	_deviceResources->endOfComputeFences[_frameId]->wait();
+	_deviceResources->endOfComputeFences[_frameId]->reset();
 
 	//	 This is how you can get value of timeline semaphore
 	//	{
@@ -701,7 +698,7 @@ pvr::Result VulkanTimelineSemaphores::renderFrame()
 	_deviceResources->uiRenderer.getDefaultDescription()->setText(_deviceResources->uiDescription);
 	_deviceResources->uiRenderer.getDefaultDescription()->commitUpdates();
 
-	updateModelMatrix(swapchainIndex, 0);
+	updateModelMatrix(_frameId, 0);
 
 	//---------------
 	// SUBMIT
@@ -718,8 +715,8 @@ pvr::Result VulkanTimelineSemaphores::renderFrame()
 	pvrvk::TimelineSemaphoreSubmitInfo mySemaphoreSubmitInfo;
 	std::vector<pvrvk::Semaphore> mySemaphoreSubmitInfos;
 
-	const uint64_t sumbitInfoWaitValues[] = { 7 + getAccumulatedSemaphoreValueIncrease(swapchainIndex), 0 };
-	const uint64_t signalValues[] = { 3 + getAccumulatedSemaphoreValueIncrease(swapchainIndex) + _deviceResources->semaphoreCycleValue, 0 };
+	const uint64_t sumbitInfoWaitValues[] = { 7 + getAccumulatedSemaphoreValueIncrease(_frameId), 0 };
+	const uint64_t signalValues[] = { 3 + getAccumulatedSemaphoreValueIncrease(_frameId) + _deviceResources->semaphoreCycleValue, 0 };
 
 	mySemaphoreSubmitInfo.waitSemaphoreValueCount = 2;
 	mySemaphoreSubmitInfo.waitSemaphoreValues = sumbitInfoWaitValues;
@@ -728,7 +725,7 @@ pvr::Result VulkanTimelineSemaphores::renderFrame()
 
 	pvrvk::SubmitInfo submitInfo;
 	std::vector<pvrvk::PipelineStageFlags> pipeWaitStageFlags(waitSemaphores.size(), pvrvk::PipelineStageFlags::e_COLOR_ATTACHMENT_OUTPUT_BIT);
-	submitInfo.commandBuffers = &_deviceResources->graphicsCommandBuffers[swapchainIndex];
+	submitInfo.commandBuffers = &_deviceResources->graphicsCommandBuffers[_frameId];
 	submitInfo.numCommandBuffers = 1;
 	submitInfo.waitSemaphores = &waitSemaphores[0];
 	submitInfo.numWaitSemaphores = static_cast<uint32_t>(waitSemaphores.size());
@@ -738,21 +735,23 @@ pvr::Result VulkanTimelineSemaphores::renderFrame()
 
 	submitInfo.waitDstStageMask = pipeWaitStageFlags.data();
 
-	_deviceResources->graphicsQueue->submit(&submitInfo, 1, _deviceResources->perFrameResourcesFences[swapchainIndex]);
+	_deviceResources->graphicsQueue->submit(&submitInfo, 1, _deviceResources->perFrameResourcesFences[_frameId]);
 
 	pvr::utils::endQueueDebugLabel(_deviceResources->graphicsQueue);
 
-	_deviceResources->semaphoreIterations[swapchainIndex]++;
+	_deviceResources->semaphoreIterations[_frameId]++;
 
 	if (this->shouldTakeScreenshot())
 	{
-		pvr::utils::takeScreenshot(_deviceResources->graphicsQueue, _deviceResources->graphicsCommandPool, _deviceResources->swapchain, swapchainIndex,
-			this->getScreenshotFileName(), _deviceResources->vmaAllocator, _deviceResources->vmaAllocator);
+		pvr::utils::takeScreenshot(_deviceResources->graphicsQueue, _deviceResources->graphicsCommandPool, _deviceResources->swapchain, _frameId, this->getScreenshotFileName(),
+			_deviceResources->vmaAllocator, _deviceResources->vmaAllocator);
 	}
 
 	//---------------
 	// PRESENT
 	pvr::utils::beginQueueDebugLabel(_deviceResources->graphicsQueue, pvrvk::DebugUtilsLabel("Presenting swapchain image to the screen"));
+
+	const uint32_t swapchainIndex = _deviceResources->swapchain->getSwapchainIndex();
 
 	pvrvk::PresentInfo presentInfo;
 	presentInfo.swapchains = &_deviceResources->swapchain;
@@ -782,15 +781,15 @@ void VulkanTimelineSemaphores::renderComputeNoiseLayers(const uint32_t swapchain
 	{
 		// This calculates, what value should timeline semaphore wait for, and what value to ping
 		// 3 is starting value. So every frame computeCanStartValue is 10 * frame number + 3.
-		const uint64_t computeCanStartValue = 3 + getAccumulatedSemaphoreValueIncrease(swapchainIndex);
+		const uint64_t computeCanStartValue = 3 + getAccumulatedSemaphoreValueIncrease(_frameId);
 		uint64_t waitValue = computeCanStartValue + i;
 
-		updateComputeDescriptorSets((i == 0) ? 0 : i - 1, i, swapchainIndex);
+		updateComputeDescriptorSets((i == 0) ? 0 : i - 1, i, _frameId);
 
 		recordComputeCommandBuffer(_frameId, i);
 		submitComputeWork(_frameId, waitValue, waitValue + 1, static_cast<uint16_t>(i));
 
-		addTimelineInfoToUIOss(swapchainIndex, static_cast<uint16_t>(i), uiOss);
+		addTimelineInfoToUIOss(_frameId, static_cast<uint16_t>(i), uiOss);
 	}
 	_deviceResources->uiDescription += uiOss.str();
 }
@@ -801,7 +800,7 @@ void VulkanTimelineSemaphores::renderComputeNoiseLayers(const uint32_t swapchain
 /// <param name="uiOss">Reference to the output string stream.</param>
 void VulkanTimelineSemaphores::addTimelineInfoToUIOss(const uint32_t swapchainIndex, int i, std::ostringstream& uiOss) const
 {
-	uiOss << "            " << (i + 1) << "            |            " << (3 + getAccumulatedSemaphoreValueIncrease(swapchainIndex) + i) << "\n";
+	uiOss << "            " << (i + 1) << "            |            " << (3 + getAccumulatedSemaphoreValueIncrease(_frameId) + i) << "\n";
 }
 
 /// <summary>Updates the model matrix.</summary>
@@ -820,13 +819,13 @@ void VulkanTimelineSemaphores::updateModelMatrix(const uint32_t swapchainIndex, 
 	UboPerMeshData srcWrite{};
 	srcWrite.mvpMtx = _viewProj * mModel * _scene->getWorldMatrix(_scene->getNode(0).getObjectId());
 
-	_deviceResources->structuredBufferView.getElementByName("MVPMatrix", 0, swapchainIndex).setValue(srcWrite.mvpMtx);
+	_deviceResources->structuredBufferView.getElementByName("MVPMatrix", 0, _frameId).setValue(srcWrite.mvpMtx);
 
 	// if the memory property flags used by the buffers' device memory do not contain e_HOST_COHERENT_BIT then we must flush the memory
 	if (static_cast<uint32_t>(_deviceResources->ubo->getDeviceMemory()->getMemoryFlags() & pvrvk::MemoryPropertyFlags::e_HOST_COHERENT_BIT) == 0)
 	{
 		_deviceResources->ubo->getDeviceMemory()->flushRange(
-			_deviceResources->structuredBufferView.getDynamicSliceOffset(swapchainIndex), _deviceResources->structuredBufferView.getDynamicSliceSize());
+			_deviceResources->structuredBufferView.getDynamicSliceOffset(_frameId), _deviceResources->structuredBufferView.getDynamicSliceSize());
 	}
 }
 
@@ -972,7 +971,7 @@ void VulkanTimelineSemaphores::createComputePipeline()
 		_deviceResources->computeDescriptorSetLayout = _deviceResources->device->createDescriptorSetLayout(descriptorSetLayoutParams);
 	}
 
-	//--- create the compute descritptor set
+	//--- create the compute descriptor set
 	{
 		for (uint32_t i = 0; i < _deviceResources->swapchain->getSwapchainLength() * _numberOfNoiseLayers; ++i)
 		{
@@ -1046,8 +1045,8 @@ void VulkanTimelineSemaphores::recordComputeCommandBuffer(const uint32_t& curren
 
 	mainCmdBuffer->pipelineBarrier(pvrvk::PipelineStageFlags::e_COMPUTE_SHADER_BIT, pvrvk::PipelineStageFlags::e_FRAGMENT_SHADER_BIT, toReadOnlyBarrierSet);
 
-	mainCmdBuffer->end();
 	pvr::utils::endCommandBufferDebugLabel(mainCmdBuffer);
+	mainCmdBuffer->end();
 }
 
 /// <summary>Updates the push constants for the compute shaders. They store displacement of planes, direction of noise panning, sale of noise, and boolean (as int) if to sample
@@ -1177,7 +1176,7 @@ void VulkanTimelineSemaphores::updateComputeDescriptorSets(const uint32_t& readI
 /// <returns>The accumulated semaphore value increase.</returns>
 uint64_t VulkanTimelineSemaphores::getAccumulatedSemaphoreValueIncrease(const uint32_t swapchainIndex) const
 {
-	return _deviceResources->semaphoreIterations[swapchainIndex] * _deviceResources->semaphoreCycleValue;
+	return _deviceResources->semaphoreIterations[_frameId] * _deviceResources->semaphoreCycleValue;
 }
 
 /// <summary>This function must be implemented by the user of the shell. The user should return its pvr::Shell object defining the behaviour of the application.</summary>

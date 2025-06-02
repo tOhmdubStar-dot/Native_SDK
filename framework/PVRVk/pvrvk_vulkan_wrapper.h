@@ -436,7 +436,9 @@ enum class PipelineCacheCreateFlags
 {
 	e_NONE = 0,
 	e_EXTERNALLY_SYNCHRONIZED_BIT_EXT = VK_PIPELINE_CACHE_CREATE_EXTERNALLY_SYNCHRONIZED_BIT_EXT,
-	e_ALL_BITS = e_EXTERNALLY_SYNCHRONIZED_BIT_EXT,
+	e_READ_ONLY_BIT = VK_PIPELINE_CACHE_CREATE_READ_ONLY_BIT,
+    e_USE_APPLICATION_STORAGE_BIT = VK_PIPELINE_CACHE_CREATE_USE_APPLICATION_STORAGE_BIT,
+	e_ALL_BITS = e_EXTERNALLY_SYNCHRONIZED_BIT_EXT | e_READ_ONLY_BIT | e_USE_APPLICATION_STORAGE_BIT,
 	e_MAX_ENUM = 0x7FFFFFFF
 };
 DEFINE_ENUM_BITWISE_OPERATORS(PipelineCacheCreateFlags)
@@ -444,6 +446,8 @@ inline std::string to_string(PipelineCacheCreateFlags value)
 {
 	std::string returnString = "";
 	append_to_string_flag(value, returnString, PipelineCacheCreateFlags::e_EXTERNALLY_SYNCHRONIZED_BIT_EXT, "VK_PIPELINE_CACHE_CREATE_EXTERNALLY_SYNCHRONIZED_BIT_EXT");
+	append_to_string_flag(value, returnString, PipelineCacheCreateFlags::e_READ_ONLY_BIT, "VK_PIPELINE_CACHE_CREATE_READ_ONLY_BIT");
+	append_to_string_flag(value, returnString, PipelineCacheCreateFlags::e_USE_APPLICATION_STORAGE_BIT, "VK_PIPELINE_CACHE_CREATE_USE_APPLICATION_STORAGE_BIT");
 	return returnString;
 }
 
@@ -8951,7 +8955,7 @@ struct PerformanceValueINTEL: private VkPerformanceValueINTEL
 	}
     inline const PerformanceValueTypeINTEL& getType() const { return (PerformanceValueTypeINTEL&)type; }
 	inline void setType(const PerformanceValueTypeINTEL& inType) { memcpy(&this->type, &inType, sizeof(this->type)); }
-	inline const PerformanceValueDataINTEL& getData() const { return *reinterpret_cast<const PerformanceValueDataINTEL *>(&data); }
+    inline const PerformanceValueDataINTEL& getData() const { return *reinterpret_cast<const PerformanceValueDataINTEL *>(&data); }
 	inline void setData(const PerformanceValueDataINTEL& inData) { memcpy(&this->data, &inData, sizeof(this->data)); }
 	inline VkPerformanceValueINTEL& get() { return *this; }
 	inline const VkPerformanceValueINTEL& get() const { return *this; }
@@ -9563,46 +9567,199 @@ inline void vkThrowIfFailed(Result result, const char* message = 0)
 {
 	switch (result)
 	{
-	case Result::e_NOT_READY: throw NotReady(message);
-	case Result::e_TIMEOUT: throw Timeout(message);
-	case Result::e_EVENT_SET: throw EventSet(message);
-	case Result::e_EVENT_RESET: throw EventReset(message);
-	case Result::e_INCOMPLETE: throw Incomplete(message);
-	case Result::e_SUBOPTIMAL_KHR: throw SuboptimalKhr(message);
-	case Result::e_THREAD_IDLE_KHR: throw ThreadIdleKhr(message);
-	case Result::e_THREAD_DONE_KHR: throw ThreadDoneKhr(message);
-	case Result::e_OPERATION_DEFERRED_KHR: throw OperationDeferredKhr(message);
-	case Result::e_OPERATION_NOT_DEFERRED_KHR: throw OperationNotDeferredKhr(message);
-	case Result::e_PIPELINE_COMPILE_REQUIRED_EXT: throw PipelineCompileRequiredExt(message);
-	case Result::e_ERROR_OUT_OF_HOST_MEMORY: throw ErrorOutOfHostMemory(message);
-	case Result::e_ERROR_OUT_OF_DEVICE_MEMORY: throw ErrorOutOfDeviceMemory(message);
-	case Result::e_ERROR_INITIALIZATION_FAILED: throw ErrorInitializationFailed(message);
-	case Result::e_ERROR_DEVICE_LOST: throw ErrorDeviceLost(message);
-	case Result::e_ERROR_MEMORY_MAP_FAILED: throw ErrorMemoryMapFailed(message);
-	case Result::e_ERROR_LAYER_NOT_PRESENT: throw ErrorLayerNotPresent(message);
-	case Result::e_ERROR_EXTENSION_NOT_PRESENT: throw ErrorExtensionNotPresent(message);
-	case Result::e_ERROR_FEATURE_NOT_PRESENT: throw ErrorFeatureNotPresent(message);
-	case Result::e_ERROR_INCOMPATIBLE_DRIVER: throw ErrorIncompatibleDriver(message);
-	case Result::e_ERROR_TOO_MANY_OBJECTS: throw ErrorTooManyObjects(message);
-	case Result::e_ERROR_FORMAT_NOT_SUPPORTED: throw ErrorFormatNotSupported(message);
-	case Result::e_ERROR_FRAGMENTED_POOL: throw ErrorFragmentedPool(message);
-	case Result::e_ERROR_UNKNOWN: throw ErrorUnknown(message);
-	case Result::e_ERROR_SURFACE_LOST_KHR: throw ErrorSurfaceLostKhr(message);
-	case Result::e_ERROR_NATIVE_WINDOW_IN_USE_KHR: throw ErrorNativeWindowInUseKhr(message);
-	case Result::e_ERROR_OUT_OF_DATE_KHR: throw ErrorOutOfDateKhr(message);
-	case Result::e_ERROR_INCOMPATIBLE_DISPLAY_KHR: throw ErrorIncompatibleDisplayKhr(message);
-	case Result::e_ERROR_VALIDATION_FAILED_EXT: throw ErrorValidationFailedEXT(message);
-	case Result::e_ERROR_INVALID_SHADER_NV: throw ErrorInvalidShaderNv(message);
-	case Result::e_ERROR_OUT_OF_POOL_MEMORY: throw ErrorOutOfPoolMemory(message);
-	case Result::e_ERROR_INVALID_EXTERNAL_HANDLE: throw ErrorInvalidExternalHandle(message);
-	case Result::e_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT: throw ErrorInvalidDrmFormatModifierPlaneLayoutExt(message);
-	case Result::e_ERROR_FRAGMENTATION: throw ErrorFragmentation(message);
-	case Result::e_ERROR_NOT_PERMITTED_EXT: throw ErrorNotPermittedExt(message);
-	case Result::e_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT: throw ErrorFullScreenExclusiveModeLostExt(message);
-	case Result::e_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS: throw ErrorInvalidOpaqueCaptureAddress(message);
-	case Result::e_SUCCESS:
+	case Result::e_NOT_READY:
+	{
+		throw NotReady(message);
 		break;
+	}
+	case Result::e_TIMEOUT: 
+	{
+		throw Timeout(message);
+		break;
+	}
+	case Result::e_EVENT_SET:
+	{ 
+		throw EventSet(message);
+		break;
+	}
+	case Result::e_EVENT_RESET:
+	{ 
+		throw EventReset(message);
+		break;
+	}
+	case Result::e_INCOMPLETE:
+	{ 
+		throw Incomplete(message);
+		break;
+	}
+	case Result::e_SUBOPTIMAL_KHR:
+	{ 
+		throw SuboptimalKhr(message);
+		break;
+	}
+	case Result::e_THREAD_IDLE_KHR:
+	{ 
+		throw ThreadIdleKhr(message);
+		break;
+	}
+	case Result::e_THREAD_DONE_KHR:
+	{ 
+		throw ThreadDoneKhr(message);
+		break;
+	}
+	case Result::e_OPERATION_DEFERRED_KHR:
+	{ 
+		throw OperationDeferredKhr(message);
+		break;
+	}
+	case Result::e_OPERATION_NOT_DEFERRED_KHR:
+	{ 
+		throw OperationNotDeferredKhr(message);
+		break;
+	}
+	case Result::e_PIPELINE_COMPILE_REQUIRED_EXT:
+	{ 
+		throw PipelineCompileRequiredExt(message);
+		break;
+	}
+	case Result::e_ERROR_OUT_OF_HOST_MEMORY:
+	{
+		throw ErrorOutOfHostMemory(message);
+		break;
+	}
+	case Result::e_ERROR_OUT_OF_DEVICE_MEMORY:
+	{ 
+		throw ErrorOutOfDeviceMemory(message);
+		break;
+	}
+	case Result::e_ERROR_INITIALIZATION_FAILED:
+	{ 
+		throw ErrorInitializationFailed(message);
+		break;
+	}
+	case Result::e_ERROR_DEVICE_LOST:
+	{ 
+		throw ErrorDeviceLost(message);
+		break;
+	}
+	case Result::e_ERROR_MEMORY_MAP_FAILED:
+	{ 
+		throw ErrorMemoryMapFailed(message);
+		break;
+	}
+	case Result::e_ERROR_LAYER_NOT_PRESENT:
+	{ 
+		throw ErrorLayerNotPresent(message);
+		break;
+	}
+	case Result::e_ERROR_EXTENSION_NOT_PRESENT:
+	{ 
+		throw ErrorExtensionNotPresent(message);
+		break;
+	}
+	case Result::e_ERROR_FEATURE_NOT_PRESENT:
+	{ 
+		throw ErrorFeatureNotPresent(message);
+		break;
+	}
+	case Result::e_ERROR_INCOMPATIBLE_DRIVER:
+	{ 
+		throw ErrorIncompatibleDriver(message);
+		break;
+	}
+	case Result::e_ERROR_TOO_MANY_OBJECTS:
+	{ 
+		throw ErrorTooManyObjects(message);
+		break;
+	}
+	case Result::e_ERROR_FORMAT_NOT_SUPPORTED:
+	{ 
+		throw ErrorFormatNotSupported(message);
+		break;
+	}
+	case Result::e_ERROR_FRAGMENTED_POOL:
+	{ 
+		throw ErrorFragmentedPool(message);
+		break;
+	}
+	case Result::e_ERROR_UNKNOWN:
+	{
+		throw ErrorUnknown(message);
+		break;
+	}
+	case Result::e_ERROR_SURFACE_LOST_KHR:
+	{ 
+		throw ErrorSurfaceLostKhr(message);
+		break;
+	}
+	case Result::e_ERROR_NATIVE_WINDOW_IN_USE_KHR:
+	{ 
+		throw ErrorNativeWindowInUseKhr(message);
+		break;
+	}
+	case Result::e_ERROR_OUT_OF_DATE_KHR:
+	{ 
+		throw ErrorOutOfDateKhr(message);
+		break;
+	}
+	case Result::e_ERROR_INCOMPATIBLE_DISPLAY_KHR:
+	{
+		throw ErrorIncompatibleDisplayKhr(message);
+		break;
+	}
+	case Result::e_ERROR_VALIDATION_FAILED_EXT:
+	{ 
+		throw ErrorValidationFailedEXT(message);
+		break;
+	}
+	case Result::e_ERROR_INVALID_SHADER_NV:
+	{ 
+		throw ErrorInvalidShaderNv(message);
+		break;
+	}
+	case Result::e_ERROR_OUT_OF_POOL_MEMORY:
+	{ 
+		throw ErrorOutOfPoolMemory(message);
+		break;
+	}
+	case Result::e_ERROR_INVALID_EXTERNAL_HANDLE:
+	{ 
+		throw ErrorInvalidExternalHandle(message);
+		break;
+	}
+	case Result::e_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT:
+	{ 
+		throw ErrorInvalidDrmFormatModifierPlaneLayoutExt(message);
+		break;
+	}
+	case Result::e_ERROR_FRAGMENTATION:
+	{ 
+		throw ErrorFragmentation(message);
+		break;
+	}
+	case Result::e_ERROR_NOT_PERMITTED_EXT:
+	{ 
+		throw ErrorNotPermittedExt(message);
+		break;
+	}
+	case Result::e_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT:
+	{ 
+		throw ErrorFullScreenExclusiveModeLostExt(message);
+		break;
+	}
+	case Result::e_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS:
+	{ 
+		throw ErrorInvalidOpaqueCaptureAddress(message);
+		break;
+	}
+	case Result::e_SUCCESS:
+	{
+		break;
+	}
 	default: throw ErrorUnknown(message);
+	{
+		break;
+	}
 	}
 }
 

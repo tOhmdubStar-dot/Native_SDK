@@ -41,6 +41,7 @@ set(VULKAN_EXAMPLES
 	Skinning
 	SPHFluidSimulation
 	Subgroups
+	YCbCrTextureSampling
 	TimelineSemaphores
 )
 

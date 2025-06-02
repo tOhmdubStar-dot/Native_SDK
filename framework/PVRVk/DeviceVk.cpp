@@ -573,6 +573,8 @@ Device_::Device_(make_shared_enabler, PhysicalDevice& physicalDevice, const Devi
 		deviceCreateInfo.ppEnabledExtensionNames = enabledExtensions.data();
 	}
 
+	if (createInfo.getIsSafetyCritical()) { deviceCreateInfo.pNext = &createInfo.getDeviceObjectReservationCreateInfo(); }
+
 	vkThrowIfFailed(getPhysicalDevice()->getInstance()->getVkBindings().vkCreateDevice(getPhysicalDevice()->getVkHandle(), &deviceCreateInfo, nullptr, &_vkHandle),
 		"Vulkan Device Creation failed");
 

@@ -36,6 +36,8 @@ private:
 	DebugUtilsMessengerCreateInfo debugUtilsMessengerCreateInfo; //!<  Used to capture events that occur while creating or destroying an instance
 	ValidationFeatures validationFeatures; //!<  Used to specify particular validation features to use
 
+	bool isSafetyCritical; //!< Specify whether the instance is built for standard Vulkan or for Vulkan Safety Critical
+
 public:
 	/// <summary>Constructor. Default initialised to 0</summary>
 	InstanceCreateInfo() : flags(InstanceCreateFlags(0)) {}
@@ -50,7 +52,7 @@ public:
 	explicit InstanceCreateInfo(const ApplicationInfo& applicationInfo, const VulkanExtensionList& extensions = VulkanExtensionList(),
 		const VulkanLayerList& layers = VulkanLayerList(), InstanceCreateFlags flags = InstanceCreateFlags::e_NONE,
 		pvrvk::DebugUtilsMessengerCreateInfo debugUtilsMessengerCreateInfo = pvrvk::DebugUtilsMessengerCreateInfo())
-		: flags(InstanceCreateFlags(flags)), applicationInfo(applicationInfo)
+		: flags(InstanceCreateFlags(flags)), applicationInfo(applicationInfo), isSafetyCritical(false)
 	{
 		setExtensionList(extensions);
 		setLayerList(layers);
@@ -98,6 +100,12 @@ public:
 	/// <summary>Sets the layer list</summary>
 	/// <param name="inLayers">A VulkanLayerList</param>
 	inline void setLayerList(const VulkanLayerList& inLayers) { this->layers = inLayers; }
+	/// <summary>Get whether the instance is for Vulkan Safety Critical.</summary>
+	/// <returns>InstanceCreateInfo::isSafetyCritical.</returns>
+	inline const bool getIsSafetyCritical() const { return isSafetyCritical; }
+	/// <summary>Set whether the instance is for Vulkan Safety Critical.</summary>
+	/// <param name="inIsSafetyCritical">Value to set InstanceCreateInfo::isSafetyCritical to.</param>
+	inline void setIsSafetyCritical(bool inIsSafetyCritical) { this->isSafetyCritical = inIsSafetyCritical; }
 };
 
 namespace impl {

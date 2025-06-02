@@ -139,6 +139,8 @@ void setQuitAfterTime(Shell& shell, const char* arg, const char* val)
 	WARN_AND_QUIT_IF_PARAMETER_NOT_PROVIDED(arg, val);
 	shell.setQuitAfterTime(static_cast<float>(atof(val)));
 }
+void setSafetyCritical(Shell& shell, const char* arg, const char* val) { shell.setSafetyCritical(true); }
+void setJsonGeneration(Shell& shell, const char* arg, const char* val) { shell.setJsonGeneration(true); }
 void setPosx(Shell& shell, const char* arg, const char* val)
 {
 	WARN_AND_QUIT_IF_PARAMETER_NOT_PROVIDED(arg, val);
@@ -310,7 +312,8 @@ const std::map<std::string, SetShellParameterPtr> supportedCommandLineOptions{ s
 	std::make_pair("-c", &setCaptureFrames), std::make_pair("-screenshotscale", &setScreenshotScale), std::make_pair("-priority", &setContextPriority),
 	std::make_pair("-config", &setDesiredCconfigId), std::make_pair("-forceframetime", &setForceFrameTime), std::make_pair("-fft", &setForceFrameTime),
 	std::make_pair("-version", &showVersion), std::make_pair("-fps", &setShowFps), std::make_pair("-info", &showInfo), std::make_pair("-h", &showCommandLineOptions),
-	std::make_pair("-help", &showCommandLineOptions), std::make_pair("--help", &showCommandLineOptions) };
+	std::make_pair("-help", &showCommandLineOptions), std::make_pair("--help", &showCommandLineOptions), std::make_pair("-safetycritical", &setSafetyCritical),
+	std::make_pair("-jsongeneration", &setJsonGeneration) };
 
 namespace {
 void showCommandLineOptions(Shell& /*shell*/, const char* /*arg*/, const char* /*val*/)
@@ -461,7 +464,19 @@ Result StateMachine::executeInitApplication()
 		return Result::InitializationError;
 	}
 
-	Result result = _shell->shellInitApplication();
+	Result result = _shell->shellPreInitApplication();
+	if (result != Result::Success)
+	{
+		_shellData.weAreDone = true;
+		_shell.reset();
+		preExit();
+		std::string error = std::string("PreInitApplication() failed with pvr error '") + getResultCodeString(result) + std::string("'\n");
+		Log(LogLevel::Error, error.c_str());
+		_currentState = StateInitialised;
+		return result;
+	}
+
+	result = _shell->shellInitApplication();
 	if (result != Result::Success)
 	{
 		_shellData.weAreDone = true;

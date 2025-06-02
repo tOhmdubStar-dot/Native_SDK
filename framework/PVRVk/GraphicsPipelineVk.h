@@ -36,8 +36,10 @@ public:
 	FragmentShadingRateStateCreateInfo fragmentShadingRate; //!< Fragment shading rate information (added to pNext chain if enabled)
 	RenderPass renderPass; //!< The RenderPass
 	uint32_t subpass; //!< The subpass index
+	void* pNext; //!< pNext field of the corresponding VkGraphicsPipelineCreateInfo struct
+	bool isSafetyCritical; //!< Flag to know if the graphics pipeline is for standard Vulkan or for Vulkan Safety Critical
 
-	GraphicsPipelineCreateInfo() : PipelineCreateInfo(), subpass(0) {}
+	GraphicsPipelineCreateInfo() : PipelineCreateInfo(), subpass(0), pNext(nullptr), isSafetyCritical(false) {}
 };
 namespace impl {
 

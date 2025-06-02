@@ -341,8 +341,6 @@ void RenderPass_::createRenderPass2(const RenderPassCreateInfo& createInfo)
 	renderPassInfoVk.correlatedViewMaskCount = 0;
 	renderPassInfoVk.pCorrelatedViewMasks = nullptr;
 
-	getDevice()->getPhysicalDevice()->getProperties().getApiVersion();
-
 	vkThrowIfFailed(getDevice()->getVkBindings().vkCreateRenderPass2(getDevice()->getVkHandle(), &renderPassInfoVk, NULL, &_vkHandle), "Create RenderPass Failed");
 }
 

@@ -295,6 +295,13 @@ public:
 	/// <summary>Gets the Transform feedback features</summary>
 	/// <returns>The physical device transform feedback features</returns>
 	inline PhysicalDeviceTransformFeedbackFeatures getTransformFeedbackFeatures() { return _transformFeedbackFeatures; }
+
+	/// <summary>Gets the device create info member variable _createInfo.</summary>
+	/// <returns>The device create info member variable _createInfo.</returns>
+	inline const DeviceCreateInfo& getDeviceCreateInfo() const
+	{
+		return _createInfo;
+	}
 };
 } // namespace impl
 } // namespace pvrvk

@@ -134,12 +134,13 @@ bool createEGLDisplay(EGLDisplay& eglDisplay)
 }
 
 /*!*********************************************************************************************************************
-\param[in]			eglDisplay                  The EGLDisplay used by the application
-\param[out]		eglConfig                   The EGLConfig chosen by the function
+\param[in]	eglDisplay        The EGLDisplay used by the application
+\param[in]	screenPixelFormat Supported pixel format chosen for the Screen widnowing system
+\param[out]	eglConfig         The EGLConfig chosen by the function
 \return		Whether the function succeeded or not.
 \brief	Chooses an appropriate EGLConfig and return it.
 ***********************************************************************************************************************/
-bool chooseEGLConfig(EGLDisplay eglDisplay, EGLConfig& eglConfig)
+bool chooseEGLConfig(EGLDisplay eglDisplay, int screenPixelFormat, EGLConfig& eglConfig)
 {
 	//	Specify the required configuration attributes.
 	//	An EGL "configuration" describes the capabilities an application requires and the type of surfaces that can be used for drawing.
@@ -158,12 +159,78 @@ bool chooseEGLConfig(EGLDisplay eglDisplay, EGLConfig& eglConfig)
 	//	advanced applications choose to do. For this application however, taking the first EGLConfig that the function returns suits
 	//	its needs perfectly, so we limit it to returning a single EGLConfig.
 	EGLint configsReturned;
-	if (!eglChooseConfig(eglDisplay, configurationAttributes, &eglConfig, 1, &configsReturned) || (configsReturned != 1))
+	if(!eglChooseConfig(eglDisplay, configurationAttributes, NULL, 0, &configsReturned))
 	{
-		printf("Failed to choose a suitable config.");
+		printf("Initial call to eglChooseConfig failed.\n");
 		return false;
 	}
-	return true;
+
+	if(configsReturned == 0)
+	{
+		printf("eglChooseConfig returned 0 available configurations.\n");
+		return false;
+	}
+
+	std::vector<EGLConfig> vectorConfiguration(configsReturned);
+	EGLint numberConfigurations;
+	eglChooseConfig(eglDisplay, configurationAttributes, vectorConfiguration.data(), configsReturned, &numberConfigurations);
+
+	if(numberConfigurations == 0)
+	{
+		printf("eglChooseConfig returned 0 available configurations.\n");
+		return false;
+	}
+
+	int redChannelBits = 0;
+	int greenChannelBits = 0;
+	int blueChannelBits = 0;
+	int alphaChannelBits = 0;
+
+	switch (screenPixelFormat)
+	{
+	case SCREEN_FORMAT_RGBA8888:
+	{
+		redChannelBits = 8;
+		greenChannelBits = 8;
+		blueChannelBits = 8;
+		alphaChannelBits = 8;
+		break;
+	}
+	case SCREEN_FORMAT_RGB565: {
+		redChannelBits = 5;
+		greenChannelBits = 6;
+		blueChannelBits = 5;
+		alphaChannelBits = 0;
+		break;
+	}
+	default:
+	{
+		printf("No matching pixel format found at chooseEGLConfig.\n");
+		break;
+	}
+	}
+
+	EGLint sizeR;
+	EGLint sizeG;
+	EGLint sizeB;
+	EGLint sizeA;
+	for(EGLint i = 0; i < numberConfigurations; ++i)
+	{
+		eglGetConfigAttrib(eglDisplay, vectorConfiguration[i], EGL_RED_SIZE, &sizeR);
+		eglGetConfigAttrib(eglDisplay, vectorConfiguration[i], EGL_GREEN_SIZE, &sizeG);
+		eglGetConfigAttrib(eglDisplay, vectorConfiguration[i], EGL_BLUE_SIZE, &sizeB);
+		eglGetConfigAttrib(eglDisplay, vectorConfiguration[i], EGL_ALPHA_SIZE, &sizeA);
+
+		if ((redChannelBits == sizeR) && (greenChannelBits == sizeG) && (blueChannelBits == sizeB) && (alphaChannelBits == sizeA))
+		{
+			eglConfig = vectorConfiguration[i];
+			return true;
+		}
+	}
+
+	printf("EGL Matching pixel configuration for the Screen pixel format not found.\n");
+
+	return false;
 }
 
 /*!*********************************************************************************************************************
@@ -421,10 +488,10 @@ bool initializeShaders(GLuint& shaderProgram)
 }
 
 /*!*********************************************************************************************************************
-\param[in]			shaderProgram               The shader program used to render the scene
-\param[in]			eglDisplay                  The EGLDisplay used by the application
-\param[in]			eglSurface					The EGLSurface created from the native window.
-\param[in]			nativeDisplay				The native display used by the application
+\param[in]		shaderProgram		The shader program used to render the scene
+\param[in]		eglDisplay   		The EGLDisplay used by the application
+\param[in]		eglSurface   		The EGLSurface created from the native window.
+\param[in]		nativeDisplay		The native display used by the application
 \return		Whether the function succeeds or not.
 \brief	Renders the scene to the framebuffer. Usually called within a loop.
 ***********************************************************************************************************************/
@@ -506,7 +573,7 @@ bool renderScene(GLuint shaderProgram, EGLDisplay eglDisplay, EGLSurface eglSurf
 
 	// Check for messages from the windowing system.
 	// Terminal
-	if (devfd > 0 || keyboard_fd > 0 || keypad_fd > 0) { return false; }
+	// if (devfd > 0 || keyboard_fd > 0 || keypad_fd > 0) { return false; }
 
 	return true;
 }
@@ -618,12 +685,8 @@ void initInput()
 	}
 }
 
-bool initializeWindow()
+bool initializeWindow(int& screenPixelFormat)
 {
-	int size[2];
-	int ePixelFormat;
-	int usage = SCREEN_USAGE_NATIVE;
-
 	screen_create_context(&screen_context, SCREEN_APPLICATION_CONTEXT);
 
 	if (screen_context == 0)
@@ -640,9 +703,43 @@ bool initializeWindow()
 		return false;
 	}
 
+	int size[2];
 	screen_get_window_property_iv(screen_window, SCREEN_PROPERTY_BUFFER_SIZE, size);
 
-	screen_set_window_property_iv(screen_window, SCREEN_PROPERTY_FORMAT, &ePixelFormat);
+	screen_display_t screen_display = 0;
+	screen_get_window_property_pv(screen_window, SCREEN_PROPERTY_DISPLAY, (void**)&screen_display);
+
+	int formatCount = 0;
+	int formats[SCREEN_FORMAT_NFORMATS];
+	screen_get_display_property_iv(screen_display, SCREEN_PROPERTY_FORMAT_COUNT, &formatCount);
+    screen_get_display_property_iv(screen_display, SCREEN_PROPERTY_FORMATS, &formats[0]);
+
+	screenPixelFormat = -1;
+
+	for (int i = 0; i < formatCount; i++)
+    {
+		if (formats[i] == SCREEN_FORMAT_RGBA8888)
+		{
+			screenPixelFormat = formats[i];
+			break;
+		}
+
+		if (formats[i] == SCREEN_FORMAT_RGB565)
+		{
+			screenPixelFormat = formats[i];
+			break;
+		}
+    }
+
+	if (screenPixelFormat == -1)
+	{
+		printf("No Screen pixel format SCREEN_FORMAT_RGBA8888 or SCREEN_FORMAT_RGB565 supported.");
+		return false;
+	}
+
+	screen_set_window_property_iv(screen_window, SCREEN_PROPERTY_FORMAT, &screenPixelFormat);
+
+	int usage = SCREEN_USAGE_NATIVE;
 	screen_set_window_property_iv(screen_window, SCREEN_PROPERTY_USAGE, &usage);
 	screen_create_window_buffers(screen_window, 2);
 
@@ -685,6 +782,7 @@ int main(int /*argc*/, char** /*argv*/)
 	EGLConfig eglConfig = NULL;
 	EGLSurface eglSurface = NULL;
 	EGLContext context = NULL;
+	int screenPixelFormat = 0;
 
 	// Handles for the two shaders used to draw the triangle, and the program handle which combines them.
 	GLuint shaderProgram = 0;
@@ -692,13 +790,13 @@ int main(int /*argc*/, char** /*argv*/)
 	GLuint vertexBuffer = 0;
 
 	// Get access to a native display
-	initializeWindow() &&
+	initializeWindow(screenPixelFormat) &&
 
 	// Create and Initialize an EGLDisplay from the native display
 	createEGLDisplay(eglDisplay) &&
 
 	// Choose an EGLConfig for the application, used when setting up the rendering surface and EGLContext
-	chooseEGLConfig(eglDisplay, eglConfig) &&
+	chooseEGLConfig(eglDisplay, screenPixelFormat, eglConfig) &&
 
 	// Create an EGLSurface for rendering from the native window
 	createEGLSurface(eglDisplay, eglConfig, eglSurface) &&

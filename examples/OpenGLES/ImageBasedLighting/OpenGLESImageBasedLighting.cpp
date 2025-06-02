@@ -386,7 +386,7 @@ public:
 
 		pvr::utils::appendSingleBuffersFromModel(*model, vbos, ibos);
 
-		_astcSupported = gl::isGlExtensionSupported("GL_KHR_texture_compression_astc_ldr") ? ".ktx" : ".pvr";
+		_astcSupported = gl::isGlExtensionSupported("GL_KHR_texture_compression_astc_ldr");
 
 		// Load the texture
 		loadTextures(assetProvider);

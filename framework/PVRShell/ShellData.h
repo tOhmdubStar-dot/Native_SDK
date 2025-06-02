@@ -56,6 +56,8 @@ struct ShellData
 	int32_t dieAfterFrame; //!< Specifies a frame after which the application will exit
 	float dieAfterTime; //!< Specifies a time after which the application will exit
 	int64_t startTime; //!< Indicates the time at which the application was started
+	bool safetyCritical; //!< Indicates whether the application should be ran as Safety Critical (only Vulkan API currently).
+	bool jsonGeneration; //!< Indicates whether the application should be ran in .json pipeline file generation mode (only Vulkan API currently).
 
 	bool outputInfo; //!< Indicates that the output information should be printed
 
@@ -69,10 +71,10 @@ struct ShellData
 
 	/// <summary>Default constructor.</summary>
 	ShellData()
-		: timeAtInitApplication(static_cast<uint64_t>(-1)), lastFrameTime(static_cast<uint64_t>(-1)), currentFrameTime(static_cast<uint64_t>(-1)),
-		  os(0), commandLine(0), captureFrameStart(-1), captureFrameStop(-1), captureFrameScale(1), trapPointerOnDrag(true), forceFrameTime(false), fakeFrameTime(16),
-		  exiting(false), frameNo(0), forceReleaseInitWindow(false), forceReleaseInitView(false), dieAfterFrame(-1), dieAfterTime(-1), startTime(0), outputInfo(false),
-		  weAreDone(false), FPS(0.0f), showFPS(false), contextType(Api::Unspecified), minContextType(Api::Unspecified){};
+		: timeAtInitApplication(static_cast<uint64_t>(-1)), lastFrameTime(static_cast<uint64_t>(-1)), currentFrameTime(static_cast<uint64_t>(-1)), os(0), commandLine(0),
+		  captureFrameStart(-1), captureFrameStop(-1), captureFrameScale(1), trapPointerOnDrag(true), forceFrameTime(false), fakeFrameTime(16), exiting(false), frameNo(0),
+		  forceReleaseInitWindow(false), forceReleaseInitView(false), dieAfterFrame(-1), dieAfterTime(-1), startTime(0), safetyCritical(false), jsonGeneration(false),
+		  outputInfo(false), weAreDone(false), FPS(0.0f), showFPS(false), contextType(Api::Unspecified), minContextType(Api::Unspecified) {};		
 };
 } // namespace platform
 } // namespace pvr

@@ -131,6 +131,31 @@ void Shell::implKeyUp(Keys key)
 	}
 }
 
+Result Shell::shellPreInitApplication()
+{
+	pvr::Result res;
+
+	// if a debugger is present then let it break on exceptions rather than catching them manually. This provides a much improved experience
+#ifdef DEBUG
+	if (isDebuggerPresent())
+	{
+		res = preInitApplication();
+		return res;
+	}
+#endif
+
+	try
+	{
+		res = preInitApplication();
+	}
+	catch (const std::runtime_error& e)
+	{
+		setExitMessage("preInitApplication threw a runtime exception with message: '%s'", e.what());
+		res = pvr::Result::InitializationError;
+	}
+	return res;
+}
+
 Result Shell::shellInitApplication()
 {
 	assertion(_data != NULL);
@@ -387,6 +412,10 @@ uint32_t Shell::getPositionY() const { return _data->attributes.y; }
 
 int32_t Shell::getQuitAfterFrame() const { return _data->dieAfterFrame; }
 
+bool Shell::getSafetyCritical() const { return _data->safetyCritical; }
+
+bool Shell::getJsonGeneration() const { return _data->jsonGeneration; }
+
 float Shell::getQuitAfterTime() const { return _data->dieAfterTime; }
 
 VsyncMode Shell::getVsyncMode() const { return _data->attributes.vsyncMode; }
@@ -400,6 +429,10 @@ uint32_t Shell::getDepthBitsPerPixel() const { return _data->attributes.depthBPP
 uint32_t Shell::getStencilBitsPerPixel() const { return _data->attributes.stencilBPP; }
 
 void Shell::setQuitAfterFrame(uint32_t value) { _data->dieAfterFrame = value; }
+
+void Shell::setSafetyCritical(bool value) const { _data->safetyCritical = value; }
+
+void Shell::setJsonGeneration(bool value) const { _data->jsonGeneration = value; }
 
 void Shell::setQuitAfterTime(float value) { _data->dieAfterTime = value; }
 

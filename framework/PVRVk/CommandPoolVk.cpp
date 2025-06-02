@@ -18,7 +18,30 @@ CommandPool_::CommandPool_(make_shared_enabler, const DeviceWeakPtr& device, con
 	vkCreateInfo.sType = static_cast<VkStructureType>(StructureType::e_COMMAND_POOL_CREATE_INFO);
 	vkCreateInfo.flags = static_cast<VkCommandPoolCreateFlags>(_createInfo.getFlags());
 	vkCreateInfo.queueFamilyIndex = _createInfo.getQueueFamilyIndex();
-	vkThrowIfFailed(getDevice()->getVkBindings().vkCreateCommandPool(getDevice()->getVkHandle(), &vkCreateInfo, NULL, &_vkHandle), "Failed to create CommandPool");
+
+	// In case the application is being run in Vulkan Safety Critical mode the command pool allocated needs extra information
+	if (getDevice()->getDeviceCreateInfo().getIsSafetyCritical())
+	{
+		uint32_t commandPoolMaxCommandBuffers = createInfo.getCommandPoolMaxCommandBuffers();
+		if (commandPoolMaxCommandBuffers != 0) { pvrvk::Error::runtime_error("ERROR: Vulkan Safety Critical mode active but command pool commandPoolMaxCommandBuffers is zero"); }
+
+		VkDeviceSize commandPoolReservedSize = createInfo.getCommandPoolReservedSize();
+		if (commandPoolReservedSize != 0) { pvrvk::Error::runtime_error("ERROR: Vulkan Safety Critical mode active but command pool commandPoolReservedSize is zero"); }
+
+		VkCommandPoolMemoryReservationCreateInfo memReserveInfo{};
+		memReserveInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_MEMORY_RESERVATION_CREATE_INFO;
+		memReserveInfo.pNext = NULL;
+		memReserveInfo.commandPoolReservedSize = commandPoolReservedSize;
+		memReserveInfo.commandPoolMaxCommandBuffers = commandPoolMaxCommandBuffers;
+		vkCreateInfo.pNext = &memReserveInfo;
+
+		vkThrowIfFailed(
+			getDevice()->getVkBindings().vkCreateCommandPool(getDevice()->getVkHandle(), &vkCreateInfo, NULL, &_vkHandle), "Failed to create CommandPool (Vulkan Safety Critical)");
+	}
+	else
+	{
+		vkThrowIfFailed(getDevice()->getVkBindings().vkCreateCommandPool(getDevice()->getVkHandle(), &vkCreateInfo, NULL, &_vkHandle), "Failed to create CommandPool");
+	}
 }
 //!\endcond
 

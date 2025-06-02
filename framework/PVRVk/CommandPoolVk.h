@@ -15,7 +15,13 @@ public:
 	/// <summary>Constructor</summary>
 	/// <param name="queueFamilyIndex">Designates a queue family, all command buffers allocated from this command pool must be submitted to queues from the same queue
 	/// family</param> <param name="flags">Flags to use for creating the command pool</param>
-	explicit CommandPoolCreateInfo(uint32_t queueFamilyIndex, CommandPoolCreateFlags flags = CommandPoolCreateFlags::e_NONE) : _flags(flags), _queueFamilyIndex(queueFamilyIndex) {}
+	/// <param name="safetyCriticalCommandPoolReservedSize">Only for Safety Critical, sets the size of the memory the command pool will have available to record command buffers
+	/// to.</param> <param name="safetyCriticalCommandPoolMaxCommandBuffers">Set the amount of command buffers that will be allocated from this command pool.</param>
+	explicit CommandPoolCreateInfo(uint32_t queueFamilyIndex, CommandPoolCreateFlags flags = CommandPoolCreateFlags::e_NONE, VkDeviceSize safetyCriticalCommandPoolReservedSize = 0,
+		uint32_t safetyCriticalCommandPoolMaxCommandBuffers = 0)
+		: _flags(flags), _queueFamilyIndex(queueFamilyIndex), _safetyCriticalCommandPoolReservedSize(safetyCriticalCommandPoolReservedSize),
+		  _safetyCriticalCommandPoolMaxCommandBuffers(safetyCriticalCommandPoolMaxCommandBuffers)
+	{}
 
 	/// <summary>Get the command pool creation flags</summary>
 	/// <returns>The set of command pool creation flags</returns>
@@ -29,12 +35,34 @@ public:
 	/// <summary>Set the Queue family index</summary>
 	/// <param name="queueFamilyIndex">The queue family index to which all command buffers allocated from this pool can be submitted to</param>
 	inline void setQueueFamilyIndex(uint32_t queueFamilyIndex) { this->_queueFamilyIndex = queueFamilyIndex; }
+	/// <summary>Get the size of memory the command pool will have to record command buffers to.</summary>
+	/// <returns>Memory size for recording command buffers to.</returns>
+	inline VkDeviceSize getCommandPoolReservedSize() const { return _safetyCriticalCommandPoolReservedSize; }
+	/// <summary>Set the size of memory the command pool will have to record command buffers to.</summary>
+	/// <param name="inSafetyCriticalCommandPoolReservedSize">Memory size for recording command buffers to.</returns>
+	inline void setCommandPoolReservedSize(VkDeviceSize inSafetyCriticalCommandPoolReservedSize)
+	{
+		this->_safetyCriticalCommandPoolReservedSize = inSafetyCriticalCommandPoolReservedSize;
+	}
+	/// <summary>Get the amount of command buffers that will be allocated from this command pool.</summary>
+	/// <returns>The amount of command buffers that will be allocated from this command pool.</returns>
+	inline uint32_t getCommandPoolMaxCommandBuffers() const { return _safetyCriticalCommandPoolMaxCommandBuffers; }
+	/// <summary>Set the amount of command buffers that will be allocated from this command pool.</summary>
+	/// <param name="safetyCriticalCommandPoolMaxCommandBuffers">Amount of command buffers that will be allocated from this command pool.</returns>
+	inline void setCommandPoolMaxCommandBuffers(uint32_t safetyCriticalCommandPoolMaxCommandBuffers)
+	{
+		this->_safetyCriticalCommandPoolMaxCommandBuffers = safetyCriticalCommandPoolMaxCommandBuffers;
+	}
 
 private:
 	/// <summary>Flags to use for creating the command pool</summary>
 	CommandPoolCreateFlags _flags;
 	/// <summary>Designates a queue family, all command buffers allocated from this command pool must be submitted to queues from the same queue family</summary>
 	uint32_t _queueFamilyIndex;
+	/// <summary>Only for Safety Critical, sets the size of the memory the command pool will have available to record command buffers to.</summary>
+	VkDeviceSize _safetyCriticalCommandPoolReservedSize;
+	/// <summary>Only for Safety Critical, sets the amount of command buffers that will be allocated from this command pool.</summary>
+	uint32_t _safetyCriticalCommandPoolMaxCommandBuffers;
 };
 
 namespace impl {

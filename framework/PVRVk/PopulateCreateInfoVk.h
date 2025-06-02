@@ -186,22 +186,21 @@ public:
 			}
 
 			// assert that the vertex & fragment shader stage must be valid else it should be inhertied from the parent
-			if (!gpcp.vertexShader.isActive())
+			if (!gpcp.isSafetyCritical && !gpcp.vertexShader.isActive())
 			{
 				assert(false && "Graphics Pipeline should either have a valid vertex shader or inherited from its parent");
 				return false;
 			}
-			if (!gpcp.fragmentShader.isActive())
+			if (!gpcp.isSafetyCritical && !gpcp.fragmentShader.isActive())
 			{
 				assert(false && "Graphics Pipeline should either have a valid fragment shader or inherited from its parent");
 				return false;
 			}
 
 			createInfo.sType = static_cast<VkStructureType>(StructureType::e_GRAPHICS_PIPELINE_CREATE_INFO);
-			createInfo.pNext = nullptr;
+			createInfo.pNext = gpcp.pNext;
 			createInfo.flags = static_cast<VkPipelineCreateFlags>(gpcp.flags);
 			// Set up the pipeline state
-			createInfo.pNext = nullptr;
 			createInfo.pInputAssemblyState = &_ia;
 			createInfo.pRasterizationState = &_rs;
 			createInfo.pMultisampleState = nullptr;
@@ -215,9 +214,12 @@ public:
 			createInfo.renderPass = gpcp.renderPass->getVkHandle();
 
 			createInfo.subpass = gpcp.subpass;
+			if (!gpcp.isSafetyCritical)
+			{
+				createInfo.stageCount = (uint32_t)((gpcp.vertexShader.isActive() ? 1 : 0) + (gpcp.fragmentShader.isActive() ? 1 : 0) +
+					(gpcp.tesselationStates.isControlShaderActive() ? 1 : 0) + (gpcp.tesselationStates.isEvaluationShaderActive() ? 1 : 0) + (gpcp.geometryShader.isActive() ? 1 : 0));
+			}
 
-			createInfo.stageCount = (uint32_t)((gpcp.vertexShader.isActive() ? 1 : 0) + (gpcp.fragmentShader.isActive() ? 1 : 0) +
-				(gpcp.tesselationStates.isControlShaderActive() ? 1 : 0) + (gpcp.tesselationStates.isEvaluationShaderActive() ? 1 : 0) + (gpcp.geometryShader.isActive() ? 1 : 0));
 			createInfo.pStages = &_shaders[0];
 		}
 
@@ -255,47 +257,67 @@ public:
 			_vertexInput.pVertexAttributeDescriptions = (val.getAttributes().size() ? &_vkVertexAttributes[0] : nullptr);
 		}
 		{
-			uint32_t shaderIndex = 0;
-			if (gpcp.vertexShader.isActive())
+			if (gpcp.isSafetyCritical)
 			{
-				specilizationEntries[0].resize(gpcp.vertexShader.getNumShaderConsts());
-				populateShaderInfo(gpcp.vertexShader.getShader()->getVkHandle(), ShaderStageFlags::e_VERTEX_BIT, gpcp.vertexShader.getEntryPoint(),
-					gpcp.vertexShader.getAllShaderConstants(), gpcp.vertexShader.getNumShaderConsts(), specializationInfos[0], specializationInfoData[0],
-					specilizationEntries[0].data(), _shaders[shaderIndex]);
-				++shaderIndex;
+				std::vector<const PipelineShaderStageCreateInfo*> vectorPointer;
+				if (gpcp.vertexShader.getShaderStage() != ShaderStageFlags::e_NONE) { vectorPointer.push_back(&gpcp.vertexShader); }
+				if (gpcp.fragmentShader.getShaderStage() != ShaderStageFlags::e_NONE) { vectorPointer.push_back(&gpcp.fragmentShader); }
+
+				for (size_t i = 0; i < vectorPointer.size(); ++i)
+				{
+					_shaders[i] = {};
+					_shaders[i].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+					_shaders[i].pName = vectorPointer[i]->getEntryPoint().c_str();
+					_shaders[i].stage = static_cast<VkShaderStageFlagBits>(vectorPointer[i]->getShaderStage());
+				}
+
+				createInfo.stageCount = static_cast<uint32_t>(vectorPointer.size());
 			}
-			if (gpcp.fragmentShader.isActive())
+			else
 			{
-				specilizationEntries[1].resize(gpcp.fragmentShader.getNumShaderConsts());
-				populateShaderInfo(gpcp.fragmentShader.getShader()->getVkHandle(), ShaderStageFlags::e_FRAGMENT_BIT, gpcp.fragmentShader.getEntryPoint(),
-					gpcp.fragmentShader.getAllShaderConstants(), gpcp.fragmentShader.getNumShaderConsts(), specializationInfos[1], specializationInfoData[1],
-					specilizationEntries[1].data(), _shaders[shaderIndex]);
-				++shaderIndex;
-			}
-			if (gpcp.geometryShader.isActive())
-			{
-				specilizationEntries[2].resize(gpcp.geometryShader.getNumShaderConsts());
-				populateShaderInfo(gpcp.geometryShader.getShader()->getVkHandle(), ShaderStageFlags::e_GEOMETRY_BIT, gpcp.geometryShader.getEntryPoint(),
-					gpcp.geometryShader.getAllShaderConstants(), gpcp.geometryShader.getNumShaderConsts(), specializationInfos[2], specializationInfoData[2],
-					specilizationEntries[2].data(), _shaders[shaderIndex]);
-				++shaderIndex;
-			}
-			if (gpcp.tesselationStates.isControlShaderActive())
-			{
-				specilizationEntries[3].resize(gpcp.tesselationStates.getNumControlShaderConstants());
-				populateShaderInfo(gpcp.tesselationStates.getControlShader()->getVkHandle(), ShaderStageFlags::e_TESSELLATION_CONTROL_BIT,
-					gpcp.tesselationStates.getControlShaderEntryPoint(), gpcp.tesselationStates.getAllControlShaderConstants(),
-					gpcp.tesselationStates.getNumControlShaderConstants(), specializationInfos[3], specializationInfoData[3], specilizationEntries[3].data(), _shaders[shaderIndex]);
-				++shaderIndex;
-			}
-			if (gpcp.tesselationStates.isEvaluationShaderActive())
-			{
-				specilizationEntries[4].resize(gpcp.tesselationStates.getNumEvaluatinonShaderConstants());
-				populateShaderInfo(gpcp.tesselationStates.getEvaluationShader()->getVkHandle(), ShaderStageFlags::e_TESSELLATION_EVALUATION_BIT,
-					gpcp.tesselationStates.getEvaluationShaderEntryPoint(), gpcp.tesselationStates.getAllEvaluationShaderConstants(),
-					gpcp.tesselationStates.getNumEvaluatinonShaderConstants(), specializationInfos[4], specializationInfoData[4], specilizationEntries[4].data(),
-					_shaders[shaderIndex]);
-				++shaderIndex;
+				uint32_t shaderIndex = 0;
+				if (gpcp.vertexShader.isActive())
+				{
+					specilizationEntries[0].resize(gpcp.vertexShader.getNumShaderConsts());
+					populateShaderInfo(gpcp.vertexShader.getShader()->getVkHandle(), ShaderStageFlags::e_VERTEX_BIT, gpcp.vertexShader.getEntryPoint(),
+						gpcp.vertexShader.getAllShaderConstants(), gpcp.vertexShader.getNumShaderConsts(), specializationInfos[0], specializationInfoData[0],
+						specilizationEntries[0].data(), _shaders[shaderIndex]);
+					++shaderIndex;
+				}
+				if (gpcp.fragmentShader.isActive())
+				{
+					specilizationEntries[1].resize(gpcp.fragmentShader.getNumShaderConsts());
+					populateShaderInfo(gpcp.fragmentShader.getShader()->getVkHandle(), ShaderStageFlags::e_FRAGMENT_BIT, gpcp.fragmentShader.getEntryPoint(),
+						gpcp.fragmentShader.getAllShaderConstants(), gpcp.fragmentShader.getNumShaderConsts(), specializationInfos[1], specializationInfoData[1],
+						specilizationEntries[1].data(), _shaders[shaderIndex]);
+					++shaderIndex;
+				}
+				if (gpcp.geometryShader.isActive())
+				{
+					specilizationEntries[2].resize(gpcp.geometryShader.getNumShaderConsts());
+					populateShaderInfo(gpcp.geometryShader.getShader()->getVkHandle(), ShaderStageFlags::e_GEOMETRY_BIT, gpcp.geometryShader.getEntryPoint(),
+						gpcp.geometryShader.getAllShaderConstants(), gpcp.geometryShader.getNumShaderConsts(), specializationInfos[2], specializationInfoData[2],
+						specilizationEntries[2].data(), _shaders[shaderIndex]);
+					++shaderIndex;
+				}
+				if (gpcp.tesselationStates.isControlShaderActive())
+				{
+					specilizationEntries[3].resize(gpcp.tesselationStates.getNumControlShaderConstants());
+					populateShaderInfo(gpcp.tesselationStates.getControlShader()->getVkHandle(), ShaderStageFlags::e_TESSELLATION_CONTROL_BIT,
+						gpcp.tesselationStates.getControlShaderEntryPoint(), gpcp.tesselationStates.getAllControlShaderConstants(),
+						gpcp.tesselationStates.getNumControlShaderConstants(), specializationInfos[3], specializationInfoData[3], specilizationEntries[3].data(),
+						_shaders[shaderIndex]);
+					++shaderIndex;
+				}
+				if (gpcp.tesselationStates.isEvaluationShaderActive())
+				{
+					specilizationEntries[4].resize(gpcp.tesselationStates.getNumEvaluatinonShaderConstants());
+					populateShaderInfo(gpcp.tesselationStates.getEvaluationShader()->getVkHandle(), ShaderStageFlags::e_TESSELLATION_EVALUATION_BIT,
+						gpcp.tesselationStates.getEvaluationShaderEntryPoint(), gpcp.tesselationStates.getAllEvaluationShaderConstants(),
+						gpcp.tesselationStates.getNumEvaluatinonShaderConstants(), specializationInfos[4], specializationInfoData[4], specilizationEntries[4].data(),
+						_shaders[shaderIndex]);
+					++shaderIndex;
+				}
 			}
 		}
 		// ColorBlend
@@ -424,8 +446,12 @@ public:
 		}
 
 		createInfo.basePipelineHandle = VK_NULL_HANDLE;
-		if (gpcp.basePipeline) { createInfo.basePipelineHandle = gpcp.basePipeline->getVkHandle(); }
-		createInfo.basePipelineIndex = gpcp.basePipelineIndex;
+		createInfo.basePipelineIndex = 0;
+		if (gpcp.basePipeline != VK_NULL_HANDLE)
+		{
+			createInfo.basePipelineHandle = gpcp.basePipeline->getVkHandle();
+			createInfo.basePipelineIndex = gpcp.basePipelineIndex;
+		}
 		return true;
 	}
 };

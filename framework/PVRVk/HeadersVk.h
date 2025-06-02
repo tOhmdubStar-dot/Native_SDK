@@ -9,4 +9,5 @@
 #include "vk_bindings.h"
 #include "vk_bindings_helper.h"
 #include "pvrvk_vulkan_wrapper.h"
+#include "pvrvk_vulkan_sc_minimal_wrapper.h"
 //!\endcond

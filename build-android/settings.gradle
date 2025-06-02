@@ -65,10 +65,12 @@ ext.PVR_VULKAN_EXAMPLES = [
 	'SPHFluidSimulation',
 	'Subgroups',
 	'TimelineSemaphores',
+	'YCbCrTextureSampling'
 ]
 
 ext.PVR_OPENCL_EXAMPLES = [ 
-	'MatrixMultiplication'
+	'MatrixMultiplication',
+	'PrefixSum'
 ]
 
 include('glm')

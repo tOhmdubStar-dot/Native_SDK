@@ -53,6 +53,7 @@ set(PVRVk_HEADERS
 	PipelineVk.h
 	PopulateCreateInfoVk.h
 	PVRVk.h
+	pvrvk_vulkan_sc_minimal_wrapper.h
 	pvrvk_vulkan_wrapper.h
 	PVRVkObjectBaseVk.h
 	QueryPoolVk.h
@@ -64,7 +65,9 @@ set(PVRVk_HEADERS
 	ShaderModuleVk.h
 	SurfaceVk.h
 	SwapchainVk.h
-	TypesVk.h)
+	TimelineSemaphoreVk.h
+	TypesVk.h
+	VulkanBase.h)
 	  
 set(PVRVk_INCLUDES 
 	../../include/pvr_openlib.h
@@ -102,7 +105,7 @@ set(PVRVk_SRC
 	SurfaceVk.cpp
 	SwapchainVk.cpp
 	TimelineSemaphoreVk.cpp
-	TimelineSemaphoreVk.h)
+	VulkanBase.cpp)
 
 set(PVRVk_INCLUDE_DIRECTORIES 
 	${CMAKE_CURRENT_LIST_DIR}/../../include

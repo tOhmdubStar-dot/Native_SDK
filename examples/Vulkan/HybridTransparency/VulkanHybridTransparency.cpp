@@ -681,7 +681,6 @@ pvr::Result VulkanHybridTransparency::initApplication()
 	for (uint32_t i = 0; i < _scene->getNumMeshNodes(); i++)
 	{
 		glm::mat4 modelToWorld = _scene->getWorldMatrix(i);
-		//glm::mat3x3 NormalMat = glm::mat3x3(glm::inverseTranspose(modelToWorld));
 		_vectorModelTransform[i] = modelToWorld;
 	}
 

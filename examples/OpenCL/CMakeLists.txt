@@ -3,6 +3,7 @@ project(OpenCLExamples)
 
 set(OPENCL_EXAMPLES 
 	MatrixMultiplication
+	PrefixSum
 )
 
 foreach(EXAMPLE ${OPENCL_EXAMPLES})

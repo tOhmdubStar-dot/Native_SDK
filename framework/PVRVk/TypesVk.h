@@ -82,6 +82,7 @@ enum Enum
 	MaxSpecialisationInfoDataSize = 1024, //!< Max specialisation info data size suported by the pipeline
 	MaxVertexAttributes = 8, //!< Max Vertex attribute supported by the pipeline
 	MaxVertexBindings = 8, //!< Max Vertex bindings supported by the pipeline
+	MaxSafetyCriticalOfflineSwapchainNumber = 8, //!< Maximum number of swapchain images when considering Vulkan Safety Critical related code
 };
 } // namespace FrameworkCaps
 
@@ -934,6 +935,9 @@ public:
 		this->_extensions.erase(new_end, this->_extensions.end());
 	}
 
+	/// <summary>Removes all extensions from the list of extensions.</summary>
+	inline void removeAllExtensions() { this->_extensions.clear(); }
+
 	/// <summary>Check if extension is enabled</summary>
 	/// <param name="extensionName">Extension name</param>
 	/// <returns>Return true if it is enabled</returns>
@@ -1024,6 +1028,9 @@ public:
 		this->_layers.erase(new_end, this->_layers.end());
 	}
 
+	/// <summary>Removes all layer from VulkanLayerList::_layers.</summary>
+	inline void removeAllLayers() { _layers.clear(); }
+
 	/// <summary>Check if layer is enabled</summary>
 	/// <param name="layerName">Layer name</param>
 	/// <returns>Return true if enabled</returns>
@@ -1036,6 +1043,19 @@ public:
 	/// <param name="layer">Layer</param>
 	/// <returns>Return true if enabled</returns>
 	bool containsLayer(const VulkanLayer& layer) const { return std::find(_layers.begin(), _layers.end(), layer) != _layers.end(); }
+
+	/// <summary>Check if the layer name given as parameter matches the name of any layer in VulkanLayerList::_layers</summary>
+	/// <param name="layerName">Layer name to verify.</param>
+	/// <returns>Return true if present, false otherwise.</returns>
+	bool containsLayerByName(const std::string& layerName) const
+	{
+		for (size_t i = 0; i < _layers.size(); ++i)
+		{
+			if (_layers[i].getName() == layerName) { return true; }
+		}
+
+		return false;
+	}
 
 private:
 	std::vector<pvrvk::VulkanLayer> _layers;
@@ -1050,6 +1070,8 @@ private:
 	VulkanExtensionList enabledExtensions; //!< Array of extensions to enable
 	const PhysicalDeviceFeatures* enabledFeatures; //!< NULL or a pointer to a PhysicalDeviceFeatures structure that contains boolean indicators of all the features to be enabled
 	void* lastRequestedExtensionFeature; //!< The extension feature pointer
+	bool isSafetyCritical; //!< Only true when the application is run in Vulkan Safety Critical mode
+	VkDeviceObjectReservationCreateInfo reservationCreateInfo; //!< Only true when the application is run in Vulkan Safety Critical mode. Struct containing the Vlkan Safety Critical parameters for the device being built
 
 public:
 	/// <summary>Constructor for the creation information structure for a Device</summary>
@@ -1060,7 +1082,7 @@ public:
 	/// <param name="flags">A set of reserved device creation flags.</param>
 	explicit DeviceCreateInfo(const std::vector<DeviceQueueCreateInfo>& queueCreateInfos = std::vector<DeviceQueueCreateInfo>(),
 		const VulkanExtensionList& enabledExtensions = VulkanExtensionList(), const PhysicalDeviceFeatures* enabledFeatures = nullptr, DeviceCreateFlags flags = DeviceCreateFlags::e_NONE)
-		: flags(flags), enabledFeatures(enabledFeatures), lastRequestedExtensionFeature(nullptr)
+		: flags(flags), enabledFeatures(enabledFeatures), lastRequestedExtensionFeature(nullptr), isSafetyCritical(false), reservationCreateInfo(VkDeviceObjectReservationCreateInfo{})
 	{
 		setDeviceQueueCreateInfos(queueCreateInfos);
 		setExtensionList(enabledExtensions);
@@ -1134,6 +1156,23 @@ public:
 	/// <summary>Get a pointer to the extension feature</summary>
 	/// <returns>A pointer to the extension feature</returns>
 	inline const void* getLastRequestedExtensionFeature() const { return lastRequestedExtensionFeature; }
+
+	/// <summary>Set whether the application is running in Vulkan Safety Critical mode.</summary>
+	/// <param name="InIsSafetyCritical">Value to set.</param>
+	inline void setIsSafetyCritical(bool InIsSafetyCritical) { this->isSafetyCritical = InIsSafetyCritical; }
+
+	/// <summary>Get whether the application is running in Vulkan Safety Critical mode.</summary>
+	/// <returns>True if the application is running in Vulkan Safety Critical mode, false otherwise.</returns>
+	inline const bool getIsSafetyCritical() const { return isSafetyCritical; }
+
+	// VkDeviceObjectReservationCreateInfo reservationCreateInfo;
+	/// <summary>Set the struct reservationCreateInfo with the parameters for when the application is run in Vulkan Safety Critical mode.</summary>
+	/// <param name="inReservationCreateInfo">Value to set.</param>
+	inline void setDeviceObjectReservationCreateInfo(VkDeviceObjectReservationCreateInfo inReservationCreateInfo) { this->reservationCreateInfo = inReservationCreateInfo; }
+
+	/// <summary>Get the struct reservationCreateInfo with the parameters for when the application is run in Vulkan Safety Critical mode.</summary>
+	/// <returns>Const reference to inReservationCreateInfo.</returns>
+	const VkDeviceObjectReservationCreateInfo& getDeviceObjectReservationCreateInfo() const { return reservationCreateInfo; }
 };
 
 /// <summary>The ClearValue struct. Color or depth/stencil value to clear the attachment to.</summary>
@@ -1353,8 +1392,8 @@ struct AttachmentDescription : private VkAttachmentDescription
 	/// <param name="stencilLoadOp">Stencil load operation. Default is 'Don't Care'. Don't forget to change this if you're using stencil components.</param>
 	/// <param name="stencilStoreOp">Stencil store operator. Default is 'Don't Care'. Don't forget to change this if you're using stencil components.</param>
 	/// <param name="numSamples">Number of samples. Default is 1.</param>
-	AttachmentDescription(const pvrvk::Format format, const pvrvk::ImageLayout initialLayout, const pvrvk::ImageLayout finalLayout,
-		const pvrvk::AttachmentLoadOp loadOp, const pvrvk::AttachmentStoreOp storeOp, const pvrvk::AttachmentLoadOp stencilLoadOp = pvrvk::AttachmentLoadOp::e_DONT_CARE,
+	AttachmentDescription(const pvrvk::Format format, const pvrvk::ImageLayout initialLayout, const pvrvk::ImageLayout finalLayout, const pvrvk::AttachmentLoadOp loadOp,
+		const pvrvk::AttachmentStoreOp storeOp, const pvrvk::AttachmentLoadOp stencilLoadOp = pvrvk::AttachmentLoadOp::e_DONT_CARE,
 		const pvrvk::AttachmentStoreOp stencilStoreOp = pvrvk::AttachmentStoreOp::e_DONT_CARE, const pvrvk::SampleCountFlags numSamples = pvrvk::SampleCountFlags::e_1_BIT)
 	{
 		this->flags = static_cast<VkAttachmentDescriptionFlags>(AttachmentDescriptionFlags::e_NONE);
@@ -1793,17 +1832,17 @@ public:
 	inline void setFlags(SemaphoreCreateFlags flags) { this->_flags = flags; }
 	/// <summary>Set the Semaphore type</summary>
 	/// <param name="semaphoreType">The Semaphore type</param>
-	inline void setSemaphoreType(SemaphoreType semaphoreType) { this->_semaphoreType  = semaphoreType; }
+	inline void setSemaphoreType(SemaphoreType semaphoreType) { this->_semaphoreType = semaphoreType; }
 	/// <summary>Get the Semaphore type</summary>
 	/// <returns>The Semaphore type</returns>
-	inline SemaphoreType getSemaphoreType() const { return this-> _semaphoreType; }
+	inline SemaphoreType getSemaphoreType() const { return this->_semaphoreType; }
 
 private:
 	/// <summary>Flags to use for creating the Semaphore</summary>
 	SemaphoreCreateFlags _flags;
 
 	/// <summary>Type of semaphore, binary or timeline</summary>
-	SemaphoreType _semaphoreType{SemaphoreType::e_BINARY};
+	SemaphoreType _semaphoreType{ SemaphoreType::e_BINARY };
 };
 
 /// <summary>Containes a ValidationFeatures structure which specifies a set of validation features which should be enabled or disabled.</summary>

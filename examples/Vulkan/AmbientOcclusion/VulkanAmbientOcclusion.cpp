@@ -273,7 +273,7 @@ pvr::Result VulkanAmbientOcclusion::initView()
 	_resources->compositeAttachment.resize(_swapLength);
 	_resources->cmdBuffers.resize(_swapLength);
 	_resources->framebuffers = std::vector<std::vector<pvrvk::Framebuffer>>(numberRenderPasses, std::vector<pvrvk::Framebuffer>(_swapLength, 0));
-	_resources->inputDescSets = std::vector<std::vector<pvrvk::DescriptorSet>>(numberSubpasses, std::vector<pvrvk::DescriptorSet>(_swapLength, 0));
+	_resources->inputDescSets = std::vector<std::vector<pvrvk::DescriptorSet>>(numberSubpasses, std::vector<pvrvk::DescriptorSet>(std::max(_swapLength, _sceneHandle->getNumMaterials()), 0));
 
 	_resources->framebuffers[RenderPasses::Presentation] = swapchainCreateOutput.framebuffer;
 

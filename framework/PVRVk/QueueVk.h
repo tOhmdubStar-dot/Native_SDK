@@ -78,7 +78,8 @@ struct SubmitInfo
 
 	/// <summary>Constructor. Default initialised to 0.</summary>
 	SubmitInfo()
-		: waitDstStageMask(nullptr), commandBuffers(nullptr), numCommandBuffers(0), waitSemaphores(nullptr), numWaitSemaphores(0), signalSemaphores(nullptr), numSignalSemaphores(0), timelineSemaphoreSubmitInfo(nullptr)
+		: waitDstStageMask(nullptr), commandBuffers(nullptr), numCommandBuffers(0), waitSemaphores(nullptr), numWaitSemaphores(0), signalSemaphores(nullptr),
+		  numSignalSemaphores(0), timelineSemaphoreSubmitInfo(nullptr)
 	{}
 
 	/// <summary>Constructor. Initialise with inidividual values</summary>
